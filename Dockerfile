@@ -1,0 +1,1 @@
+FROM python:3.14WORKDIR /appCOPY requirements.txt .RUN pip install --no-cache-dir -r requirements.txtCOPY . .# Ensure the in-container database directory existsRUN mkdir -p /app/dataCMD ["python", "-u", "main.py"]
