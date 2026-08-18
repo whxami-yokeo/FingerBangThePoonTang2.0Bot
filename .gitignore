@@ -1,3 +1,4 @@
+.ai/
 .idea/
 .venv/
 songs/
@@ -8,4 +9,3 @@ utils/executables/
 utils/voice_files/
 temp_delete/
 all_cookies.txt
-.ai/
