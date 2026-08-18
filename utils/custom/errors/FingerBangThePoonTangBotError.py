@@ -73,7 +73,7 @@ class ChannelNotSupported(FingerBangThePoonTangCommandError):
 
 class BotNotInChannelError(FingerBangThePoonTangCommandError):
     """
-    tODO documentation
+    TODO documentation
     """
 
     def __init__(self, message="The Bot Is Not In A Voice Channel.", error: str = None):
@@ -82,7 +82,7 @@ class BotNotInChannelError(FingerBangThePoonTangCommandError):
 
 class BotAlreadyInChannelError(FingerBangThePoonTangCommandError):
     """
-    tODO documentation
+    TODO documentation
     """
 
     def __init__(self, message="The Bot Is Already In A Voice Channel.", error: str = None):
@@ -91,7 +91,7 @@ class BotAlreadyInChannelError(FingerBangThePoonTangCommandError):
 
 class CouldNotConnectToChannelError(FingerBangThePoonTangCommandError):
     """
-    tODO documentation
+    TODO documentation
     """
 
     def __init__(self, message="Could Not Connect To The Channel..", error: str = None):
@@ -100,7 +100,7 @@ class CouldNotConnectToChannelError(FingerBangThePoonTangCommandError):
 
 class UserNotInChannelError(FingerBangThePoonTangCommandError):
     """
-    tODO documentation
+    TODO documentation
     """
 
     def __init__(self, message="You Are Not In A Voice Channel.", error: str = None):

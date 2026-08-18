@@ -91,9 +91,9 @@ class MusicCommands(commands.Cog):
         self.vc[guild_id] = None
 
     def now_playing_embed(
-        self,
-        ctx: commands.Context,
-        song: dict,
+            self,
+            ctx: commands.Context,
+            song: dict,
     ) -> discord.Embed:
         embed = discord.Embed(
             title="▶️ Now Playing",
@@ -135,9 +135,9 @@ class MusicCommands(commands.Cog):
         return embed
 
     async def join_vc(
-        self,
-        ctx: commands.Context,
-        channel: discord.VoiceChannel,
+            self,
+            ctx: commands.Context,
+            channel: discord.VoiceChannel,
     ) -> discord.VoiceClient:
         """
         Join the supplied voice channel or move there if needed.
@@ -174,10 +174,10 @@ class MusicCommands(commands.Cog):
         return voice_client
 
     def extract_yt(
-        self,
-        url: str,
-        message: discord.Message,
-        requester: str,
+            self,
+            url: str,
+            message: discord.Message,
+            requester: str,
     ) -> Optional[dict]:
         """Extract a playable audio URL and video metadata with yt-dlp."""
         try:
@@ -217,9 +217,9 @@ class MusicCommands(commands.Cog):
             return results["entries"][0]["webpage_url"]
 
     def after_song(
-        self,
-        ctx: commands.Context,
-        error: Optional[Exception],
+            self,
+            ctx: commands.Context,
+            error: Optional[Exception],
     ) -> None:
         """
         Called by Discord's audio thread after a track stops.

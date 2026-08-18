@@ -40,9 +40,9 @@ class PlayDownloadedSongButtonView(discord.ui.View):
         emoji="▶️",
     )
     async def button_callback(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button,
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button,
     ):
         # A button must be clicked from inside a server because voice channels
         # and guild voice clients do not exist in direct messages.

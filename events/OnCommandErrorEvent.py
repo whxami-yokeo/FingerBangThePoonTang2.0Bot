@@ -38,10 +38,10 @@ class OnCommandError(commands.Cog):
         return text
 
     async def send_error_embed(
-        self,
-        ctx: commands.Context,
-        title: str,
-        description: str,
+            self,
+            ctx: commands.Context,
+            title: str,
+            description: str,
     ):
         """
         Sends a regular command-context reply.
@@ -64,9 +64,9 @@ class OnCommandError(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError,
+            self,
+            ctx: commands.Context,
+            error: commands.CommandError,
     ):
         """
         Handles uncaught prefix-command errors safely.
