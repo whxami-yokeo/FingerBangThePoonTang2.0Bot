@@ -1,1 +1,217 @@
-import asyncioimport jsonimport loggingimport os.pathimport yt_dlpfrom discord import Colorfrom discord.ext import commandsfrom print_color import printfrom utils.EmbedGeneratorUtil import EmbedGeneratorfrom utils.custom.loggers.YTDLPLogger import YTDLPLoggerfrom utils.custom.views.PlayDownloadedSongButtonView import (    PlayDownloadedSongButtonView,)class DownloadSongCommand(commands.Cog):    def __init__(self, bot: commands.Bot):        self.bot = bot        self.logger = logging.getLogger("discord")        self.songs_dir = (            "/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/songs/"        )        self.songs_info_dir = (            "/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/songs_info/"        )        self.url = None        self.info = None        self.search_query = None        self.ydl_opts = {            "format": "bestaudio/best",            "postprocessors": [                {                    "key": "FFmpegExtractAudio",                    "preferredcodec": "mp3",                    "preferredquality": "best",                }            ],            "outtmpl": (                "/Users/eddie/PycharmProjects/"                "FingerBangThePoonTang2Bot/songs/%(id)s.%(ext)s"            ),            "noplaylist": True,            "logger": YTDLPLogger(),            "quiet": True,            "noprogress": True,            "newline": True,            "dump_single_json": True,        }    @commands.command(        name="dlsong",        help="Downloads A Song From Youtube And Stores It Locally, For Later Playback.",    )    async def download_song(        self,        ctx: commands.Context,        *,        search_query: str = commands.Parameter(            "search_query",            description="The Query To Search Youtube.",            kind=commands.Parameter.POSITIONAL_OR_KEYWORD,        ),    ):        if search_query is None:            raise commands.MissingRequiredArgument(                param=commands.Parameter(                    name="search_query",                    description="The Query To Search Youtube",                    kind=commands.Parameter.POSITIONAL_OR_KEYWORD,                )            )        self.search_query = search_query        embed = EmbedGenerator(self.bot).generate_simple_message_embed(            description=(                f"Searching For '{search_query}' And Attempting To Download! "                "This May Take Some Time."            ),            colour=Color.blurple(),        )        print(            f"Youtube for: {search_query}",            tag="SEARCHING",            tag_color="blue",            color="white",        )        self.logger.info(msg=f"[SEARCHING] Youtube For: {search_query}")        msg_ = await ctx.reply(embed=embed, mention_author=False)        try:            await asyncio.to_thread(self.download_and_extract)        except Exception as error:            # Full error stays in the terminal/log only.            self.logger.exception(                "Song download failed for query %r",                search_query,            )            print(                f"Song download failed: {type(error).__name__}: {error}",                tag="ERROR",                tag_color="red",                color="white",            )            # Do NOT include str(error) here. yt-dlp can produce huge diagnostic text.            embed = EmbedGenerator(                self.bot            ).generate_title_message_embed_with_footer(                title="📛 Song Download Failed 📛",                description=(                    "I could not download that song. YouTube rejected or temporarily "                    "failed the request.\n\n"                    "Please try again in a few minutes."                ),                colour=Color.red(),                timestamp=True,            )            await ctx.channel.send(embed=embed)            # This is essential. Do not access self.info after a failed download.            return        if not self.info or not self.info.get("entries"):            await ctx.channel.send(                "The download completed, but YouTube did not return a playable result."            )            return        song_info = self.info["entries"][0]        song_id = str(song_info["id"])        song_title = song_info.get("title", "Unknown Song")        song_url = song_info.get("webpage_url")        embed = EmbedGenerator.generate_simple_message_embed(            description=f"Successfully Downloaded {song_title}",            colour=Color.green(),        )        await msg_.edit(embed=embed)        print(            f"Downloaded {song_title} - {song_url}",            tag="SUCCESS",            tag_color="green",            color="white",        )        self.logger.info(msg=f"[SUCCESS] Downloaded {song_title} - {song_url}")        # Keep the URL associated with the specific downloaded song rather        # than relying on a potentially changed shared cog attribute.        audio_file = os.path.join(self.songs_dir, f"{song_id}.mp3")        info_file = os.path.join(self.songs_info_dir, f"{song_id}.json")        if not os.path.exists(audio_file):            await ctx.channel.send(                "The song metadata downloaded, but the MP3 file was not found."            )            return        if not os.path.exists(info_file):            await ctx.channel.send(                "The song downloaded, but its information JSON file was not found."            )            return        if ctx.author.voice is not None:            # IMPORTANT:            # Do not pass ctx=ctx here. The view uses interaction.user when            # someone presses the button, which also works for persistent views.            view = PlayDownloadedSongButtonView(                bot=self.bot,                file=audio_file,                file_info=info_file,                url=song_url,            )            await ctx.send(view=view)        else:            await ctx.send(                "The song was downloaded, but you must join a voice channel "                "before I can show the playback button."            )    def download_and_extract(self):        with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:            print(                f"Song: {self.search_query}",                tag="DOWNLOADING",                tag_color="blue",                color="white",            )            self.logger.info(msg=f"[DOWNLOADING] Song: {self.search_query}")            self.info = ydl.extract_info(                f"ytsearch:{self.search_query}",                download=True,            )            song_info = self.info["entries"][0]            song_id = str(song_info["id"])            filename = os.path.join(                self.songs_info_dir,                f"{song_id}.json",            )            if not os.path.exists(filename):                with open(filename, "w", encoding="utf-8") as info_file:                    json.dump(                        song_info,                        info_file,                        ensure_ascii=False,                        indent=4,                    )                print(                    f"Song Info File: {self.search_query}",                    tag="SUCCESS",                    tag_color="green",                    color="white",                )                self.logger.info(                    msg=f"[SUCCESS] Saved song information for: {self.search_query}"                )            self.url = song_info.get("webpage_url")            return self.urlasync def setup(bot: commands.Bot):    await bot.add_cog(DownloadSongCommand(bot))
+import asyncio
+import json
+import logging
+import os.path
+
+import yt_dlp
+from discord import Color
+from discord.ext import commands
+from print_color import print
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+from utils.custom.loggers.YTDLPLogger import YTDLPLogger
+from utils.custom.views.PlayDownloadedSongButtonView import (
+    PlayDownloadedSongButtonView,
+)
+
+
+class DownloadSongCommand(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.logger = logging.getLogger("discord")
+        self.songs_dir = os.path.join(self.bot.location, "songs")
+        self.songs_info_dir = os.path.join(self.bot.location, "songs_info")
+        os.makedirs(self.songs_dir, exist_ok=True)
+        os.makedirs(self.songs_info_dir, exist_ok=True)
+        self.url = None
+        self.info = None
+        self.search_query = None
+        self.ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "best",
+                }
+            ],
+            "outtmpl": os.path.join(self.songs_dir, "%(id)s.%(ext)s"),
+            "noplaylist": True,
+            "logger": YTDLPLogger(),
+            "quiet": True,
+            "noprogress": True,
+            "newline": True,
+            "dump_single_json": True,
+        }
+
+    @commands.command(
+        name="dlsong",
+        help="Downloads A Song From Youtube And Stores It Locally, For Later Playback.",
+    )
+    async def download_song(
+        self,
+        ctx: commands.Context,
+        *,
+        search_query: str = commands.Parameter(
+            "search_query",
+            description="The Query To Search Youtube.",
+            kind=commands.Parameter.POSITIONAL_OR_KEYWORD,
+        ),
+    ):
+        if search_query is None:
+            raise commands.MissingRequiredArgument(
+                param=commands.Parameter(
+                    name="search_query",
+                    description="The Query To Search Youtube",
+                    kind=commands.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            )
+        self.search_query = search_query
+        embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+            description=(
+                f"Searching For '{search_query}' And Attempting To Download! "
+                "This May Take Some Time."
+            ),
+            colour=Color.blurple(),
+        )
+        print(
+            f"Youtube for: {search_query}",
+            tag="SEARCHING",
+            tag_color="blue",
+            color="white",
+        )
+        self.logger.info(msg=f"[SEARCHING] Youtube For: {search_query}")
+        msg_ = await ctx.reply(embed=embed, mention_author=False)
+
+        try:
+            await asyncio.to_thread(self.download_and_extract)
+        except Exception as error:
+            # Full error stays in the terminal/log only.
+            self.logger.exception(
+                "Song download failed for query %r",
+                search_query,
+            )
+            print(
+                f"Song download failed: {type(error).__name__}: {error}",
+                tag="ERROR",
+                tag_color="red",
+                color="white",
+            )
+            # Do NOT include str(error) here. yt-dlp can produce huge diagnostic text.
+            embed = EmbedGenerator(
+                self.bot
+            ).generate_title_message_embed_with_footer(
+                title="📛 Song Download Failed 📛",
+                description=(
+                    "I could not download that song. YouTube rejected or temporarily "
+                    "failed the request.\n\n"
+                    "Please try again in a few minutes."
+                ),
+                colour=Color.red(),
+                timestamp=True,
+            )
+            await ctx.channel.send(embed=embed)
+            # This is essential. Do not access self.info after a failed download.
+            return
+
+        if not self.info or not self.info.get("entries"):
+            await ctx.channel.send(
+                "The download completed, but YouTube did not return a playable result."
+            )
+            return
+
+        song_info = self.info["entries"][0]
+        song_id = str(song_info["id"])
+        song_title = song_info.get("title", "Unknown Song")
+        song_url = song_info.get("webpage_url")
+
+        embed = EmbedGenerator.generate_simple_message_embed(
+            description=f"Successfully Downloaded {song_title}",
+            colour=Color.green(),
+        )
+        await msg_.edit(embed=embed)
+
+        print(
+            f"Downloaded {song_title} - {song_url}",
+            tag="SUCCESS",
+            tag_color="green",
+            color="white",
+        )
+        self.logger.info(msg=f"[SUCCESS] Downloaded {song_title} - {song_url}")
+
+        # Keep the URL associated with the specific downloaded song rather
+        # than relying on a potentially changed shared cog attribute.
+        audio_file = os.path.join(self.songs_dir, f"{song_id}.mp3")
+        info_file = os.path.join(self.songs_info_dir, f"{song_id}.json")
+
+        if not os.path.exists(audio_file):
+            await ctx.channel.send(
+                "The song metadata downloaded, but the MP3 file was not found."
+            )
+            return
+
+        if not os.path.exists(info_file):
+            await ctx.channel.send(
+                "The song downloaded, but its information JSON file was not found."
+            )
+            return
+
+        if ctx.author.voice is not None:
+            # IMPORTANT:
+            # Do not pass ctx=ctx here. The view uses interaction.user when
+            # someone presses the button, which also works for persistent views.
+            view = PlayDownloadedSongButtonView(
+                bot=self.bot,
+                file=audio_file,
+                file_info=info_file,
+                url=song_url,
+            )
+            await ctx.send(view=view)
+        else:
+            await ctx.send(
+                "The song was downloaded, but you must join a voice channel "
+                "before I can show the playback button."
+            )
+
+    def download_and_extract(self):
+        with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+            print(
+                f"Song: {self.search_query}",
+                tag="DOWNLOADING",
+                tag_color="blue",
+                color="white",
+            )
+            self.logger.info(msg=f"[DOWNLOADING] Song: {self.search_query}")
+            self.info = ydl.extract_info(
+                f"ytsearch:{self.search_query}",
+                download=True,
+            )
+            song_info = self.info["entries"][0]
+            song_id = str(song_info["id"])
+            filename = os.path.join(
+                self.songs_info_dir,
+                f"{song_id}.json",
+            )
+            if not os.path.exists(filename):
+                with open(filename, "w", encoding="utf-8") as info_file:
+                    json.dump(
+                        song_info,
+                        info_file,
+                        ensure_ascii=False,
+                        indent=4,
+                    )
+                print(
+                    f"Song Info File: {self.search_query}",
+                    tag="SUCCESS",
+                    tag_color="green",
+                    color="white",
+                )
+                self.logger.info(
+                    msg=f"[SUCCESS] Saved song information for: {self.search_query}"
+                )
+            self.url = song_info.get("webpage_url")
+            return self.url
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(DownloadSongCommand(bot))

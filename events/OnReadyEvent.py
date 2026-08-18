@@ -64,12 +64,14 @@ class OnReady(commands.Cog):
                             except Exception as e:
                                 print('start_log_loop', e)
 
-            if not os.path.exists("/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/discord.log"):
-                print(f"Log file not found at /Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/discord.log")
-                raise FileNotFoundError(
-                    "Log file not found at /Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/discord.log")
+            log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'discord.log')
 
-            with open("/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/discord.log", 'r', encoding='utf-8') as f:
+            if not os.path.exists(log_path):
+                print(f"Log file not found at {log_path}")
+                raise FileNotFoundError(
+                    f"Log file not found at {log_path}")
+
+            with open(log_path, 'r', encoding='utf-8') as f:
                 f.seek(self.last_read_position)
                 new_content = f.read()
                 self.last_read_position = f.tell()

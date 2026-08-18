@@ -1,1 +1,157 @@
-import asyncioimport discordfrom discord.ext import commandsimport loggingimport osimport shutilfrom print_color import printfrom db_services.MysqlServices import check_connectionfrom utils.custom.CustomHelpCommand import CustomHelpCommandfrom utils.custom.loggers.YTDLPLogger import YTDLPLoggerfrom utils.custom.threads.CheckForFFMPEGThread import download_and_extract_ffmpegclass Bot(commands.Bot):    def __init__(self, command_prefix: str, *, intents_: discord.Intents, token: str):        super().__init__(command_prefix=command_prefix, intents=intents_, help_command=CustomHelpCommand())        self.token = token        self.ffmpeg = "ffmpeg"        self.location = "/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot"        self.db_host = "localhost"        self.db_user = "root"        self.db_pass = ""        self.db_db_name = "dpy_bot"        self.logger = logging.getLogger('discord')        self.is_playing = {}        self.is_paused = {}        self.musicQueue = {}        self.queueIndex = {}        self.vc = {}        self.YDL_OPTS = {            'format': 'bestaudio/best',            'postprocessors': [{                'key': 'FFmpegExtractAudio',                'preferredcodec': 'mp3',  # or 'opus', 'webm'                'preferredquality': 'best',  # or 'best'            }],            'outtmpl': '/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/songs/%(id)s.%(ext)s',            # Specify local directory and filename format            'noplaylist': True,  # Prevent downloading entire playlists            'logger': YTDLPLogger(),            'quiet': True,            'noprogress': True,            'newline': True,            'dump_single_json': True,            "js_runtimes": {                "deno": {},            },            "cookiesfrombrowser": ("chrome",),        }        self.FFMPEG_OPTS = {            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',            'options': '-vn -b:a 192k -loglevel quiet'        }        if self.ffmpeg is None:            raise RuntimeError(                "FFmpeg was not found. Run: brew install ffmpeg"            )    # noinspection PyTypeChecker    async def setup_hook(self):        self.ffmpeg = await download_and_extract_ffmpeg(bot=self)        self.logger.info("Loading Custom Errors...")        print("\nLoading Custom Errors...")        for filename in os.listdir(f"{self.location}/utils/custom/errors/"):            if filename.endswith('.py'):                print(f"Loaded Custom Error: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")        self.logger.info(f"[SUCCESS] Loaded Custom Errors!")        self.logger.info("Loading Custom Loggers...")        print("\nLoading Custom Loggers...")        for filename in os.listdir(f"{self.location}/utils/custom/loggers/"):            if filename.endswith('.py'):                print(f"Loaded Custom Logger: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")        self.logger.info(f"[SUCCESS] Loaded Custom Loggers!")        self.logger.info("Loading Custom Threads...")        print("\nLoading Custom Threads...")        for filename in os.listdir(f"{self.location}/utils/custom/threads/"):            if filename.endswith('.py'):                print(f"Loaded Custom Thread: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")        self.logger.info(f"[SUCCESS] Loaded Custom Threads!")        self.logger.info("Loading Custom Enums...")        print("\nLoading Custom Enums...")        for filename in os.listdir(f"{self.location}/utils/enums/"):            if filename.endswith('.py'):                print(f"Loaded Custom Enum: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")        self.logger.info(f"[SUCCESS] Loaded Custom Enums!")        self.logger.info("Loading Events...")        print("\nLoading Events...")        for filename in os.listdir(f'{self.location}/events/'):            if filename.endswith('.py'):                try:                    await self.load_extension(f'events.{filename[:-3]}')                    print(f'Loaded Event: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")                except Exception as e:                    print(f'Failed To Load Event {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")                    self.logger.error(msg=f"[FAILURE] Failed To Load Event {filename[:-3]} {e}")        self.logger.info(msg="[SUCCESSFUL] Loaded Events!")        self.logger.info(msg="Loading Custom Commands...")        print("\nLoading Custom Commands...")        for filename in os.listdir(f'{self.location}/cogs/'):            if filename.endswith('.py'):                try:                    await self.load_extension(f'cogs.{filename[:-3]}')                    print(f'Loaded Command: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")                except Exception as e:                    print(f'Failed To Load Command {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")                    self.logger.error(msg=f"[FAILURE] Failed To Load Command {filename[:-3]} {e}")        self.logger.info(msg="[SUCCESSFUL] Loaded Commands!")        self.logger.info("Loading Utilities...")        print("\nLoading Utilities...")        for filename in os.listdir(f'{self.location}/utils/'):            if filename.endswith('.py'):                try:                    await self.load_extension(f'utils.{filename[:-3]}')                    print(f'Loaded Utility: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")                except Exception as e:                    print(f'Failed To Load Utility {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")                    self.logger.error(msg=f"[FAILURE] Failed To Load Utility {filename[:-3]} {e}")        self.logger.info(msg="[SUCCESSFUL] Loaded Utilities!")        self.logger.info("Loading Views...")        print("\nLoading Views...")        for filename in os.listdir(f'{self.location}/utils/custom/views/'):            if filename.endswith('.py'):                try:                    await self.load_extension(f'utils.custom.views.{filename[:-3]}')                    print(f'Loaded View: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")                except Exception as e:                    print(f'Failed To Load View {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")                    self.logger.error(msg=f"[FAILURE] Failed To Load View {filename[:-3]} {e}")        self.logger.info(msg="[SUCCESSFUL] Loaded Views!")        self.logger.info(msg="Loading Databases...")        print("\nLoading Databases...")        # value_if_true if condition else value_if_false        if await check_connection(                host=self.db_host,                user=self.db_user,                password=self.db_pass, database=self.db_db_name):            print("Loaded dpy_bot DB", tag="SUCCESS", tag_color="green", color="white")            self.logger.info(msg="[SUCCESSFUL] Loaded dpy_bot DB!")        else:            print("Failed To Load dpy_bot DB", tag="FAILURE", tag_color="red", color="red")            self.logger.error(msg=f"[FAILURE] Failed To Load 'dpy_bot! dB!")
+import asyncio
+
+import discord
+from discord.ext import commands
+import logging
+import os
+import shutil
+from print_color import print
+
+from db_services.MysqlServices import check_connection
+from utils.custom.CustomHelpCommand import CustomHelpCommand
+from utils.custom.loggers.YTDLPLogger import YTDLPLogger
+from utils.custom.threads.CheckForFFMPEGThread import download_and_extract_ffmpeg
+
+
+class Bot(commands.Bot):
+    def __init__(self, command_prefix: str, *, intents_: discord.Intents, token: str):
+        super().__init__(command_prefix=command_prefix, intents=intents_, help_command=CustomHelpCommand())
+        self.token = token
+        self.ffmpeg = "ffmpeg"
+        self.location = os.path.dirname(os.path.abspath(__file__))
+        self.db_host = os.getenv('DB_HOST', 'host.docker.internal' if os.path.exists('/.dockerenv') else 'localhost')
+        self.db_user = "root"
+        self.db_pass = ""
+        self.db_db_name = "dpy_bot"
+        self.logger = logging.getLogger('discord')
+
+        self.is_playing = {}
+        self.is_paused = {}
+        self.musicQueue = {}
+        self.queueIndex = {}
+        self.vc = {}
+
+        self.YDL_OPTS = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',  # or 'opus', 'webm'
+                'preferredquality': 'best',  # or 'best'
+            }],
+            'outtmpl': os.path.join(self.location, 'songs', '%(id)s.%(ext)s'),
+            # Specify local directory and filename format
+            'noplaylist': True,  # Prevent downloading entire playlists
+            'logger': YTDLPLogger(),
+            'quiet': True,
+            'noprogress': True,
+            'newline': True,
+            'dump_single_json': True,
+            "js_runtimes": {
+                "deno": {},
+            },
+            "cookiefile": os.path.join(self.location, 'all_cookies.txt'),
+            "remote_components": ["ejs:github"],
+        }
+
+        self.FFMPEG_OPTS = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn -b:a 192k -loglevel warning'
+        }
+
+        if self.ffmpeg is None:
+            raise RuntimeError(
+                "FFmpeg was not found. Run: brew install ffmpeg"
+            )
+
+    # noinspection PyTypeChecker
+    async def setup_hook(self):
+        self.ffmpeg = await download_and_extract_ffmpeg(bot=self)
+
+        self.logger.info("Loading Custom Errors...")
+        print("\nLoading Custom Errors...")
+        for filename in os.listdir(f"{self.location}/utils/custom/errors/"):
+            if filename.endswith('.py'):
+                print(f"Loaded Custom Error: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")
+        self.logger.info(f"[SUCCESS] Loaded Custom Errors!")
+
+        self.logger.info("Loading Custom Loggers...")
+        print("\nLoading Custom Loggers...")
+        for filename in os.listdir(f"{self.location}/utils/custom/loggers/"):
+            if filename.endswith('.py'):
+                print(f"Loaded Custom Logger: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")
+        self.logger.info(f"[SUCCESS] Loaded Custom Loggers!")
+
+        self.logger.info("Loading Custom Threads...")
+        print("\nLoading Custom Threads...")
+        for filename in os.listdir(f"{self.location}/utils/custom/threads/"):
+            if filename.endswith('.py'):
+                print(f"Loaded Custom Thread: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")
+        self.logger.info(f"[SUCCESS] Loaded Custom Threads!")
+
+        self.logger.info("Loading Custom Enums...")
+        print("\nLoading Custom Enums...")
+        for filename in os.listdir(f"{self.location}/utils/enums/"):
+            if filename.endswith('.py'):
+                print(f"Loaded Custom Enum: {filename[:-3]}", tag="SUCCESS", tag_color="green", color="white")
+        self.logger.info(f"[SUCCESS] Loaded Custom Enums!")
+
+        self.logger.info("Loading Events...")
+        print("\nLoading Events...")
+        for filename in os.listdir(f'{self.location}/events/'):
+            if filename.endswith('.py'):
+                try:
+                    await self.load_extension(f'events.{filename[:-3]}')
+                    print(f'Loaded Event: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")
+                except Exception as e:
+                    print(f'Failed To Load Event {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")
+                    self.logger.error(msg=f"[FAILURE] Failed To Load Event {filename[:-3]} {e}")
+
+        self.logger.info(msg="[SUCCESSFUL] Loaded Events!")
+        self.logger.info(msg="Loading Custom Commands...")
+        print("\nLoading Custom Commands...")
+        for filename in os.listdir(f'{self.location}/cogs/'):
+            if filename.endswith('.py'):
+                try:
+                    await self.load_extension(f'cogs.{filename[:-3]}')
+                    print(f'Loaded Command: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")
+                except Exception as e:
+                    print(f'Failed To Load Command {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")
+                    self.logger.error(msg=f"[FAILURE] Failed To Load Command {filename[:-3]} {e}")
+
+        self.logger.info(msg="[SUCCESSFUL] Loaded Commands!")
+        self.logger.info("Loading Utilities...")
+        print("\nLoading Utilities...")
+        for filename in os.listdir(f'{self.location}/utils/'):
+            if filename.endswith('.py'):
+                try:
+                    await self.load_extension(f'utils.{filename[:-3]}')
+                    print(f'Loaded Utility: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")
+                except Exception as e:
+                    print(f'Failed To Load Utility {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")
+                    self.logger.error(msg=f"[FAILURE] Failed To Load Utility {filename[:-3]} {e}")
+
+        self.logger.info(msg="[SUCCESSFUL] Loaded Utilities!")
+        self.logger.info("Loading Views...")
+        print("\nLoading Views...")
+        for filename in os.listdir(f'{self.location}/utils/custom/views/'):
+            if filename.endswith('.py'):
+                try:
+                    await self.load_extension(f'utils.custom.views.{filename[:-3]}')
+                    print(f'Loaded View: {filename[:-3]}', tag="SUCCESS", tag_color="green", color="white")
+                except Exception as e:
+                    print(f'Failed To Load View {filename[:-3]}: {e}', tag="FAILURE", tag_color="red", color="red")
+                    self.logger.error(msg=f"[FAILURE] Failed To Load View {filename[:-3]} {e}")
+
+        self.logger.info(msg="[SUCCESSFUL] Loaded Views!")
+        self.logger.info(msg="Loading Databases...")
+        print("\nLoading Databases...")
+        # value_if_true if condition else value_if_false
+        if await check_connection(
+                host=self.db_host,
+                user=self.db_user,
+                password=self.db_pass, database=self.db_db_name):
+            print("Loaded dpy_bot DB", tag="SUCCESS", tag_color="green", color="white")
+            self.logger.info(msg="[SUCCESSFUL] Loaded dpy_bot DB!")
+        else:
+            print("Failed To Load dpy_bot DB", tag="FAILURE", tag_color="red", color="red")
+            self.logger.error(msg=f"[FAILURE] Failed To Load 'dpy_bot! dB!")

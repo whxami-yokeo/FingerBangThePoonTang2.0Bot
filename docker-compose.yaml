@@ -1,1 +1,11 @@
-services:  bot:    build: .    env_file:      - .env    environment:      DISCORD_TOKEN: ${DISCORD_TOKEN}
+services:
+  main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fingerbangthepoontang2bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}

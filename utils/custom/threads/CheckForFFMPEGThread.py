@@ -1,1 +1,57 @@
-from turtledemo.sorting_animate import start_ssortimport requestsimport tarfile  # or zipfile for Windowsimport platformimport osfrom py7zr import py7zrfrom print_color import printimport subprocessasync def download_and_extract_ffmpeg(bot, target_dir="/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/utils/executables/"):    """Downloads and extracts the latest FFmpeg build."""    print("\nDownloading and Extracting FFMPEG...")    os.makedirs(target_dir, exist_ok=True)    # Determine OS for correct build URL    system = platform.system()    download_url = ""    if system == "Windows":        download_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z"  # Example URL        # Use a library like 'py7zr' or 'patool' for .7z extraction    elif system == "Linux":        download_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz"  # Example URL    elif system == "Darwin":        download_url = "https://evermeet.cx/ffmpeg/ffmpeg-9.0.1.7z"    response = requests.get(download_url, stream=True)    response.raise_for_status()  # Raise an exception for bad status codes    filename = os.path.join(target_dir, os.path.basename(download_url))    with open(filename, 'wb') as f:        for chunk in response.iter_content(chunk_size=8192):            f.write(chunk)    archive_path = '/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/utils/executables/ffmpeg-120646-g6711c6a89b.7z'    # Directory where you want to extract the contents    extract_dir = '/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/utils/executables/'    if not os.path.exists(archive_path):        print(f"Error: Archive file not found at '{archive_path}'")        return    try:        # Construct the command to extract the 7z file        command = ["7za", "x", archive_path, f"-o{extract_dir}"]        # Execute the command        result = subprocess.run(command, capture_output=True, text=True, check=True)        if result.stderr:            print("Stderr:", result.stderr)    except subprocess.CalledProcessError as e:        print(f"Error during extraction: {e}")        print("Command:", e.cmd)        print("Return Code:", e.returncode)        print("Stdout:", e.stdout)        print("Stderr:", e.stderr)    except FileNotFoundError:        print("Error: '7za' command not found. Please ensure p7zip is installed and in your PATH.")    print("FFmpeg downloaded and extracted successfully.", tag_color='green', tag="SUCCESS", color='white')    os.remove(archive_path)    return "/Users/eddie/PycharmProjects/FingerBangThePoonTang2Bot/utils/executables/ffmpeg"
+import os
+import shutil
+import sys
+
+
+async def download_and_extract_ffmpeg(bot, target_dir=None):
+    """Returns path to ffmpeg. In containers, uses system-installed Linux ffmpeg.
+    On macOS dev, uses the bundled macOS binary and downloads it if missing."""
+
+    # In containers (Docker), use the apt-installed Linux ffmpeg on PATH.
+    if os.path.exists('/.dockerenv'):
+        from print_color import print
+        system_ffmpeg = shutil.which('ffmpeg')
+        if system_ffmpeg:
+            print(f"FFmpeg found at {system_ffmpeg}", tag_color='green', tag="SUCCESS", color='white')
+            return system_ffmpeg
+        print("FFmpeg not found on PATH inside container.", tag_color='red', tag="ERROR", color='white')
+        return 'ffmpeg'
+
+    if target_dir is None:
+        target_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'executables')
+
+    ffmpeg_path = os.path.join(target_dir, 'ffmpeg')
+
+    # If the bundled macOS ffmpeg already exists, return it
+    if os.path.exists(ffmpeg_path) and os.path.getsize(ffmpeg_path) > 1000000:  # > 1MB
+        from print_color import print
+        print(f"FFmpeg found at {ffmpeg_path}", tag_color='green', tag="SUCCESS", color='white')
+        return ffmpeg_path
+
+    # On macOS dev, download if missing
+    from print_color import print
+    import requests
+
+    print("\nDownloading and Extracting FFMPEG...")
+    os.makedirs(target_dir, exist_ok=True)
+
+    download_url = "https://evermeet.cx/ffmpeg/getrelease/zip"
+    try:
+        response = requests.get(download_url, stream=True, timeout=30)
+        response.raise_for_status()
+
+        filename = os.path.join(target_dir, os.path.basename(download_url))
+        with open(filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        import zipfile
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            zip_ref.extractall(target_dir)
+
+        os.remove(filename)
+        print("FFmpeg downloaded and extracted successfully.", tag_color='green', tag="SUCCESS", color='white')
+    except Exception as e:
+        print(f"Failed to download FFmpeg: {e}", tag_color='red', tag="ERROR", color='white')
+
+    return ffmpeg_path
