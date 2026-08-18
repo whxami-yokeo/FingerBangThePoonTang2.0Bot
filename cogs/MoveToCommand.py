@@ -1,1 +1,42 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorclass MoveToCommand(commands.Cog):    def __init__(self, bot):        self.bot = bot    @commands.guild_only()    @commands.has_role("Bot Admin")    @commands.command(name="moveto", help="Moves the bot to the current initiating author's voice channel if they are in one and have the role of 'Bot Admin'")    async def moveto(self, ctx: discord.ext.commands.Context):        """        Moves the bot to the current initiating author's voice channel if they are in one and have the role of 'Bot Admin'        :param ctx: This is the discord Interaction we can access data from.        :return:        """        if ctx.voice_client:            client_channel = ctx.message.author.voice.channel            bot_channel = ctx.voice_client.channel            if client_channel != bot_channel:                await ctx.voice_client.move_to(ctx.author.voice.channel)                embed = EmbedGenerator(self.bot).generate_simple_message_embed(                    description="Successfully moved channels!", colour=Color.green())                await ctx.reply(embed=embed, mention_author=False, ephemeral=True)            else:                embed = EmbedGenerator(self.bot).generate_simple_message_embed(                    description="We are in the same channel, I can not move!", colour=Color.dark_orange())                await ctx.reply(embed=embed, mention_author=False, ephemeral=True)        else:            embed = EmbedGenerator(self.bot).generate_simple_message_embed(description="I am not in a voice channel!",                                                                           colour=Color.dark_orange())            await ctx.reply(embed=embed, mention_author=False, ephemeral=True)async def setup(bot: commands.Bot):    await bot.add_cog(MoveToCommand(bot))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+
+
+class MoveToCommand(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.guild_only()
+    @commands.has_role("Bot Admin")
+    @commands.command(name="moveto", help="Moves the bot to the current initiating author's voice channel if they are in one and have the role of 'Bot Admin'")
+    async def moveto(self, ctx: discord.ext.commands.Context):
+        """
+        Moves the bot to the current initiating author's voice channel if they are in one and have the role of 'Bot Admin'
+        :param ctx: This is the discord Interaction we can access data from.
+        :return:
+        """
+
+        if ctx.voice_client:
+            client_channel = ctx.message.author.voice.channel
+            bot_channel = ctx.voice_client.channel
+
+            if client_channel != bot_channel:
+                await ctx.voice_client.move_to(ctx.author.voice.channel)
+                embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+                    description="Successfully moved channels!", colour=Color.green())
+                await ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+            else:
+                embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+                    description="We are in the same channel, I can not move!", colour=Color.dark_orange())
+                await ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+        else:
+            embed = EmbedGenerator(self.bot).generate_simple_message_embed(description="I am not in a voice channel!",
+                                                                           colour=Color.dark_orange())
+            await ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(MoveToCommand(bot))

@@ -1,1 +1,45 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorclass UserInfo(commands.Cog):    def __init__(self, bot: commands.Bot):        self.bot = bot    @commands.guild_only()    @commands.command(name="ui", help="Sends an embed to the current channel with information about the user who initiated this command")    async def ui(self, ctx: discord.ext.commands.Context):        """        Sends an embed to the current channel with information about the user who initiated this command.        :param ctx: This is the discord Interaction we can access data from        :return:        """        member = ctx.author        embed = discord.Embed(            colour=Color.light_embed(),            title="User Info",            description="This command displays information about the user."        )        embed.add_field(name="Name", value=f"{member.display_name}#{ctx.author.discriminator}")        embed.add_field(name="ID", value=f"{member.id}")        embed.add_field(name="User Created At", value=member.created_at)        embed.add_field(name="User Joined Guild At", value=member.joined_at)        embed.add_field(name="Pending Verification", value=member.pending)        embed.add_field(name="Current Activity", value=member.activity)        embed.add_field(name="Is On Mobile", value=member.is_on_mobile())        embed.add_field(name="Top Role", value=member.top_role)        embed.add_field(name="Web Status", value=member.web_status)        embed.set_thumbnail(url=member.avatar.url)        embed.set_footer(text=f"This message was brought to you by {self.bot.user.name}'s Message Delivery System!", icon_url=self.bot.user.avatar.url)        embed.timestamp = discord.utils.utcnow()        await ctx.reply(embed=embed, mention_author=False)async def setup(bot: commands.Bot):    await bot.add_cog(UserInfo(bot))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+
+
+class UserInfo(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.guild_only()
+    @commands.command(name="ui", help="Sends an embed to the current channel with information about the user who initiated this command")
+    async def ui(self, ctx: discord.ext.commands.Context):
+        """
+        Sends an embed to the current channel with information about the user who initiated this command.
+        :param ctx: This is the discord Interaction we can access data from
+        :return:
+        """
+
+        member = ctx.author
+        embed = discord.Embed(
+            colour=Color.light_embed(),
+            title="User Info",
+            description="This command displays information about the user."
+        )
+
+        embed.add_field(name="Name", value=f"{member.display_name}#{ctx.author.discriminator}")
+        embed.add_field(name="ID", value=f"{member.id}")
+        embed.add_field(name="User Created At", value=member.created_at)
+        embed.add_field(name="User Joined Guild At", value=member.joined_at)
+        embed.add_field(name="Pending Verification", value=member.pending)
+        embed.add_field(name="Current Activity", value=member.activity)
+        embed.add_field(name="Is On Mobile", value=member.is_on_mobile())
+        embed.add_field(name="Top Role", value=member.top_role)
+        embed.add_field(name="Web Status", value=member.web_status)
+        embed.set_thumbnail(url=member.avatar.url)
+        embed.set_footer(text=f"This message was brought to you by {self.bot.user.name}'s Message Delivery System!", icon_url=self.bot.user.avatar.url)
+        embed.timestamp = discord.utils.utcnow()
+
+        await ctx.reply(embed=embed, mention_author=False)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(UserInfo(bot))

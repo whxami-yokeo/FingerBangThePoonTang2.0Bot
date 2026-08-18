@@ -1,1 +1,27 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorclass SecretCommand(commands.Cog):    def __init__(self, bot: commands.Bot):        self.bot = bot    @commands.has_role("Member")    @commands.guild_only()    @commands.command(name="secret", help="This is a secret command that can only be ran if you have the role needed")    async def secret(self, ctx: discord.ext.commands.Context):        """        This is a secret command that can only be run if you have the role needed.        :param ctx: This is the discord Interaction we can access data from.        :return:        """        embed = EmbedGenerator(self.bot).generate_simple_message_embed(description="Welcome to the secret club!", colour=Color.magenta(), timestamp=False)        await ctx.reply(embed=embed, mention_author=False)async def setup(bot: commands.Bot):    await bot.add_cog(SecretCommand(bot))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+
+
+class SecretCommand(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.has_role("Member")
+    @commands.guild_only()
+    @commands.command(name="secret", help="This is a secret command that can only be ran if you have the role needed")
+    async def secret(self, ctx: discord.ext.commands.Context):
+        """
+        This is a secret command that can only be run if you have the role needed.
+        :param ctx: This is the discord Interaction we can access data from.
+        :return:
+        """
+
+        embed = EmbedGenerator(self.bot).generate_simple_message_embed(description="Welcome to the secret club!", colour=Color.magenta(), timestamp=False)
+        await ctx.reply(embed=embed, mention_author=False)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(SecretCommand(bot))

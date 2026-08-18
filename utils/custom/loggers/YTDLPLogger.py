@@ -1,1 +1,25 @@
-import loggingclass YTDLPLogger:    def __init__(self):        self.logger = logging.getLogger("yt_dlp")    def debug(self, message):        # yt-dlp sends normal status lines to debug().        # Ignore its own verbose debug-prefixed messages, but log other output.        if message.startswith("[debug] "):            return        self.logger.debug(message)    def info(self, message):        self.logger.info(message)    def warning(self, message):        self.logger.warning(message)    def error(self, message):        # This writes to your terminal/log configuration only.        # It intentionally does NOT send a Discord message.        self.logger.error(message)
+import logging
+
+
+class YTDLPLogger:
+    def __init__(self):
+        self.logger = logging.getLogger("yt_dlp")
+
+    def debug(self, message):
+        # yt-dlp sends normal status lines to debug().
+        # Ignore its own verbose debug-prefixed messages, but log other output.
+        if message.startswith("[debug] "):
+            return
+
+        self.logger.debug(message)
+
+    def info(self, message):
+        self.logger.info(message)
+
+    def warning(self, message):
+        self.logger.warning(message)
+
+    def error(self, message):
+        # This writes to your terminal/log configuration only.
+        # It intentionally does NOT send a Discord message.
+        self.logger.error(message)

@@ -1,1 +1,37 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorfrom utils.custom.errors.FingerBangThePoonTangBotError import UserAndBotNotInSameChannelError, BotNotInChannelErrorclass LeaveCommand(commands.Cog):    def __init__(self, bot):        self.bot = bot    @commands.guild_only()    @commands.has_role("Bot Admin")    @commands.command(name="l", help="Disconnect the bot to from current initiating author's voice channel if they are in one and it is the same as the bot's.")    async def leave_1(self, ctx: discord.ext.commands.Context):        """        Disconnect the bot to from current initiating author's voice channel if they are in one, and it is the same as the bot's.        :param ctx:  This is the discord Interaction we can access data from.        :return:        """        if ctx.voice_client:            client_channel = ctx.message.author.voice.channel            bot_channel = ctx.voice_client.channel            if client_channel == bot_channel:                await ctx.guild.voice_client.disconnect(force=True)                return True            else:                raise UserAndBotNotInSameChannelError(error="You Must Be In The Same Channel As The Bot!")        else:            raise BotNotInChannelError(error="I Must Be In A Voice Channel In Order To Leave!")async def setup(bot: commands.Bot):    await bot.add_cog(LeaveCommand(bot))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+from utils.custom.errors.FingerBangThePoonTangBotError import UserAndBotNotInSameChannelError, BotNotInChannelError
+
+
+class LeaveCommand(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.guild_only()
+    @commands.has_role("Bot Admin")
+    @commands.command(name="l", help="Disconnect the bot to from current initiating author's voice channel if they are in one and it is the same as the bot's.")
+    async def leave_1(self, ctx: discord.ext.commands.Context):
+        """
+        Disconnect the bot to from current initiating author's voice channel if they are in one, and it is the same as the bot's.
+        :param ctx:  This is the discord Interaction we can access data from.
+        :return:
+        """
+
+        if ctx.voice_client:
+            client_channel = ctx.message.author.voice.channel
+            bot_channel = ctx.voice_client.channel
+
+            if client_channel == bot_channel:
+                await ctx.guild.voice_client.disconnect(force=True)
+                return True
+            else:
+                raise UserAndBotNotInSameChannelError(error="You Must Be In The Same Channel As The Bot!")
+        else:
+            raise BotNotInChannelError(error="I Must Be In A Voice Channel In Order To Leave!")
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(LeaveCommand(bot))

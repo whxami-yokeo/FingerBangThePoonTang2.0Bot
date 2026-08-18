@@ -1,1 +1,43 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorclass MoveToVoiceChannelButtonView(discord.ui.View):    def __init__(self, ctx: discord.ext.commands.Context, bot: commands.Bot):        self.ctx = ctx        self.bot = bot        super().__init__(timeout=None)    # noinspection PyTypeChecker    @discord.ui.button(label="Move me to your current channel!", custom_id="button-1",                       style=discord.ButtonStyle.primary, emoji="💨")    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):        if self.ctx.voice_client:            client_channel = self.ctx.author.voice.channel            bot_channel = self.ctx.voice_client.channel            if client_channel != bot_channel:                button.disabled = True                await interaction.response.edit_message(view=self)                await self.ctx.voice_client.move_to(self.ctx.author.voice.channel)                embed = EmbedGenerator(self.bot).generate_simple_message_embed(                    description="Successfully moved channels!", colour=Color.green())                await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)            else:                await interaction.response.edit_message(view=self)                embed = EmbedGenerator(self.bot).generate_simple_message_embed(                    description="We are in the same channel, I can not move!", colour=Color.dark_orange())                await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)        else:            await interaction.response.edit_message(view=self)            embed = EmbedGenerator(self.bot).generate_simple_message_embed(                description="I am not in a voice channel!", colour=Color.dark_orange())            await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)# noinspection PyTypeCheckerasync def setup(bot: commands.Bot):    bot.add_view(MoveToVoiceChannelButtonView(bot=bot, ctx=None))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+
+
+class MoveToVoiceChannelButtonView(discord.ui.View):
+    def __init__(self, ctx: discord.ext.commands.Context, bot: commands.Bot):
+        self.ctx = ctx
+        self.bot = bot
+        super().__init__(timeout=None)
+
+    # noinspection PyTypeChecker
+    @discord.ui.button(label="Move me to your current channel!", custom_id="button-1",
+                       style=discord.ButtonStyle.primary, emoji="💨")
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.ctx.voice_client:
+            client_channel = self.ctx.author.voice.channel
+            bot_channel = self.ctx.voice_client.channel
+
+            if client_channel != bot_channel:
+                button.disabled = True
+                await interaction.response.edit_message(view=self)
+                await self.ctx.voice_client.move_to(self.ctx.author.voice.channel)
+                embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+                    description="Successfully moved channels!", colour=Color.green())
+                await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+            else:
+                await interaction.response.edit_message(view=self)
+                embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+                    description="We are in the same channel, I can not move!", colour=Color.dark_orange())
+                await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+        else:
+            await interaction.response.edit_message(view=self)
+            embed = EmbedGenerator(self.bot).generate_simple_message_embed(
+                description="I am not in a voice channel!", colour=Color.dark_orange())
+            await self.ctx.reply(embed=embed, mention_author=False, ephemeral=True)
+
+
+# noinspection PyTypeChecker
+async def setup(bot: commands.Bot):
+    bot.add_view(MoveToVoiceChannelButtonView(bot=bot, ctx=None))

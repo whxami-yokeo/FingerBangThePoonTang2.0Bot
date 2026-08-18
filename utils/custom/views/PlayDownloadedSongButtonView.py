@@ -1,1 +1,271 @@
-import asyncioimport jsonimport discordimport urllib3.utilfrom discord import Colorfrom discord.ext import commandsfrom discord.utils import utcnowfrom cogs.JoinCommand import JoinCommandfrom utils.EmbedGeneratorUtil import EmbedGeneratorfrom utils.GetMP3DurationUtility import GeMP3DurationUtilityfrom utils.custom.errors.FingerBangThePoonTangBotError import (    UserNotInChannelError,    BotAlreadyInChannelError,)class PlayDownloadedSongButtonView(discord.ui.View):    def __init__(            self,            bot: commands.Bot,            file: str | None,            file_info: str | None,            url: urllib3.util.Url | str | None = None,    ):        super().__init__(timeout=None)        self.bot = bot        self.file = file        self.file_info = file_info        self.url = url        self.data = None    @discord.ui.button(        label="Play This Song In My Voice Channel!",        custom_id="button-2",        style=discord.ButtonStyle.primary,        emoji="▶️",    )    async def button_callback(        self,        interaction: discord.Interaction,        button: discord.ui.Button,    ):        # A button must be clicked from inside a server because voice channels        # and guild voice clients do not exist in direct messages.        if interaction.guild is None:            await interaction.response.send_message(                "This button can only be used in a Discord server.",                ephemeral=True,            )            return        # In a guild interaction, user should be a Member. This guard prevents        # accidental attribute errors if Discord/library state differs.        if not isinstance(interaction.user, discord.Member):            await interaction.response.send_message(                "I could not determine which server member clicked this button.",                ephemeral=True,            )            return        # The persistent placeholder view registered at startup has no        # file/file_info. Do not try to play from that empty registration.        if not self.file or not self.file_info:            await interaction.response.send_message(                "This song button no longer has playback data. "                "Please run the download/play command again.",                ephemeral=True,            )            return        join_cog = self.bot.get_cog("JoinCommand")        if join_cog is None or not isinstance(join_cog, JoinCommand):            await interaction.response.send_message(                "The JoinCommand cog is not loaded.",                ephemeral=True,            )            return        # Acknowledge the button within Discord's interaction deadline.        # After defer(), use followup.send() or edit_original_response().        await interaction.response.defer()        try:            # Uses the person who clicked the button, not an old command ctx.            await join_cog.join_member_voice(interaction.user)        except UserNotInChannelError as error:            await interaction.followup.send(                str(error),                ephemeral=True,            )            return        except BotAlreadyInChannelError as error:            await interaction.followup.send(                str(error),                ephemeral=True,            )            return        except discord.ClientException as error:            await interaction.followup.send(                f"I could not join your voice channel: {error}",                ephemeral=True,            )            return        voice_client = interaction.guild.voice_client        if voice_client is None or not voice_client.is_connected():            await interaction.followup.send(                "I joined unsuccessfully or could not find the voice connection.",                ephemeral=True,            )            return        try:            duration_seconds = GeMP3DurationUtility.get_mp3_duration(                file_path=self.file            )            with open(self.file_info, "r", encoding="utf-8") as info_file:                data = json.load(info_file)                self.data = data            button.disabled = True            await interaction.edit_original_response(view=self)            if voice_client.is_playing():                voice_client.stop()            ffmpeg_options = {                "options": "-b:a 192k -loglevel quiet",            }            source = discord.FFmpegPCMAudio(                source=self.file,                executable="ffmpeg",                **ffmpeg_options,            )            await self.bot.change_presence(                activity=discord.Activity(                    type=discord.ActivityType.streaming,                    name=data["title"],                    url=str(self.url) if self.url else None,                )            )            embed1 = discord.Embed(                title=f"▶️ Playing Song: {data['title']}",                description=data.get("description", "No description available."),                colour=Color.magenta(),                timestamp=utcnow(),            )            if self.bot.user is not None:                avatar_url = (                    self.bot.user.avatar.url                    if self.bot.user.avatar is not None                    else discord.Embed.Empty                )                embed1.set_footer(                    text=(                        f"This message was brought to you by "                        f"{self.bot.user.name}'s Message Delivery System!"                    ),                    icon_url=avatar_url,                )            if data.get("thumbnail"):                embed1.set_image(url=data["thumbnail"])            embed1.add_field(                name="Title / Artist",                value=data.get("title", "Unknown"),                inline=False,            )            embed1.add_field(                name="Video ID",                value=data.get("id", "Unknown"),            )            embed1.add_field(                name="Channel",                value=data.get("channel_url", "Unknown"),                inline=False,            )            embed1.add_field(                name="Video Duration",                value=data.get("duration_string", "Unknown"),            )            embed1.add_field(                name="Like Count",                value=str(data.get("like_count", "Unknown")),            )            embed1.add_field(                name="View Count",                value=str(data.get("view_count", "Unknown")),            )            await interaction.followup.send(embed=embed1)            playback_finished = asyncio.Event()            playback_error = None            def after_playing(error: Exception | None):                nonlocal playback_error                if error is not None:                    playback_error = error                self.bot.loop.call_soon_threadsafe(playback_finished.set)            voice_client.play(source, after=after_playing)            # Do not sleep for the full duration repeatedly. Wait until FFmpeg            # reports that the current audio source has ended or errored.            await playback_finished.wait()            if playback_error is not None:                await interaction.followup.send(                    f"Playback stopped because of an error: {playback_error}",                    ephemeral=True,                )            await self.bot.change_presence(activity=None)        except FileNotFoundError:            await interaction.followup.send(                "I could not find the downloaded audio file or its metadata file.",                ephemeral=True,            )        except json.JSONDecodeError:            await interaction.followup.send(                "The downloaded song metadata file is not valid JSON.",                ephemeral=True,            )        except Exception as error:            await interaction.followup.send(                f"An error occurred while trying to play this song: {error}",                ephemeral=True,            )        finally:            # Re-enable the button after playback/error. If you instead want            # one-use-only behavior, remove these two lines.            button.disabled = False            try:                await interaction.edit_original_response(view=self)            except discord.HTTPException:                passasync def setup(bot: commands.Bot):    bot.add_view(        PlayDownloadedSongButtonView(            bot=bot,            file=None,            file_info=None,            url=None,        )    )
+import asyncio
+import json
+
+import discord
+import urllib3.util
+
+from discord import Color
+from discord.ext import commands
+from discord.utils import utcnow
+
+from cogs.JoinCommand import JoinCommand
+from utils.EmbedGeneratorUtil import EmbedGenerator
+from utils.GetMP3DurationUtility import GeMP3DurationUtility
+from utils.custom.errors.FingerBangThePoonTangBotError import (
+    UserNotInChannelError,
+    BotAlreadyInChannelError,
+)
+
+
+class PlayDownloadedSongButtonView(discord.ui.View):
+    def __init__(
+            self,
+            bot: commands.Bot,
+            file: str | None,
+            file_info: str | None,
+            url: urllib3.util.Url | str | None = None,
+    ):
+        super().__init__(timeout=None)
+
+        self.bot = bot
+        self.file = file
+        self.file_info = file_info
+        self.url = url
+        self.data = None
+
+    @discord.ui.button(
+        label="Play This Song In My Voice Channel!",
+        custom_id="button-2",
+        style=discord.ButtonStyle.primary,
+        emoji="▶️",
+    )
+    async def button_callback(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        # A button must be clicked from inside a server because voice channels
+        # and guild voice clients do not exist in direct messages.
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This button can only be used in a Discord server.",
+                ephemeral=True,
+            )
+            return
+
+        # In a guild interaction, user should be a Member. This guard prevents
+        # accidental attribute errors if Discord/library state differs.
+        if not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message(
+                "I could not determine which server member clicked this button.",
+                ephemeral=True,
+            )
+            return
+
+        # The persistent placeholder view registered at startup has no
+        # file/file_info. Do not try to play from that empty registration.
+        if not self.file or not self.file_info:
+            await interaction.response.send_message(
+                "This song button no longer has playback data. "
+                "Please run the download/play command again.",
+                ephemeral=True,
+            )
+            return
+
+        join_cog = self.bot.get_cog("JoinCommand")
+
+        if join_cog is None or not isinstance(join_cog, JoinCommand):
+            await interaction.response.send_message(
+                "The JoinCommand cog is not loaded.",
+                ephemeral=True,
+            )
+            return
+
+        # Acknowledge the button within Discord's interaction deadline.
+        # After defer(), use followup.send() or edit_original_response().
+        await interaction.response.defer()
+
+        try:
+            # Uses the person who clicked the button, not an old command ctx.
+            await join_cog.join_member_voice(interaction.user)
+
+        except UserNotInChannelError as error:
+            await interaction.followup.send(
+                str(error),
+                ephemeral=True,
+            )
+            return
+
+        except BotAlreadyInChannelError as error:
+            await interaction.followup.send(
+                str(error),
+                ephemeral=True,
+            )
+            return
+
+        except discord.ClientException as error:
+            await interaction.followup.send(
+                f"I could not join your voice channel: {error}",
+                ephemeral=True,
+            )
+            return
+
+        voice_client = interaction.guild.voice_client
+
+        if voice_client is None or not voice_client.is_connected():
+            await interaction.followup.send(
+                "I joined unsuccessfully or could not find the voice connection.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            duration_seconds = GeMP3DurationUtility.get_mp3_duration(
+                file_path=self.file
+            )
+
+            with open(self.file_info, "r", encoding="utf-8") as info_file:
+                data = json.load(info_file)
+                self.data = data
+
+            button.disabled = True
+            await interaction.edit_original_response(view=self)
+
+            if voice_client.is_playing():
+                voice_client.stop()
+
+            ffmpeg_options = {
+                "options": "-b:a 192k -loglevel quiet",
+            }
+
+            source = discord.FFmpegPCMAudio(
+                source=self.file,
+                executable="ffmpeg",
+                **ffmpeg_options,
+            )
+
+            await self.bot.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.streaming,
+                    name=data["title"],
+                    url=str(self.url) if self.url else None,
+                )
+            )
+
+            embed1 = discord.Embed(
+                title=f"▶️ Playing Song: {data['title']}",
+                description=data.get("description", "No description available."),
+                colour=Color.magenta(),
+                timestamp=utcnow(),
+            )
+
+            if self.bot.user is not None:
+                avatar_url = (
+                    self.bot.user.avatar.url
+                    if self.bot.user.avatar is not None
+                    else discord.Embed.Empty
+                )
+
+                embed1.set_footer(
+                    text=(
+                        f"This message was brought to you by "
+                        f"{self.bot.user.name}'s Message Delivery System!"
+                    ),
+                    icon_url=avatar_url,
+                )
+
+            if data.get("thumbnail"):
+                embed1.set_image(url=data["thumbnail"])
+
+            embed1.add_field(
+                name="Title / Artist",
+                value=data.get("title", "Unknown"),
+                inline=False,
+            )
+            embed1.add_field(
+                name="Video ID",
+                value=data.get("id", "Unknown"),
+            )
+            embed1.add_field(
+                name="Channel",
+                value=data.get("channel_url", "Unknown"),
+                inline=False,
+            )
+            embed1.add_field(
+                name="Video Duration",
+                value=data.get("duration_string", "Unknown"),
+            )
+            embed1.add_field(
+                name="Like Count",
+                value=str(data.get("like_count", "Unknown")),
+            )
+            embed1.add_field(
+                name="View Count",
+                value=str(data.get("view_count", "Unknown")),
+            )
+
+            await interaction.followup.send(embed=embed1)
+
+            playback_finished = asyncio.Event()
+            playback_error = None
+
+            def after_playing(error: Exception | None):
+                nonlocal playback_error
+
+                if error is not None:
+                    playback_error = error
+
+                self.bot.loop.call_soon_threadsafe(playback_finished.set)
+
+            voice_client.play(source, after=after_playing)
+
+            # Do not sleep for the full duration repeatedly. Wait until FFmpeg
+            # reports that the current audio source has ended or errored.
+            await playback_finished.wait()
+
+            if playback_error is not None:
+                await interaction.followup.send(
+                    f"Playback stopped because of an error: {playback_error}",
+                    ephemeral=True,
+                )
+
+            await self.bot.change_presence(activity=None)
+
+        except FileNotFoundError:
+            await interaction.followup.send(
+                "I could not find the downloaded audio file or its metadata file.",
+                ephemeral=True,
+            )
+
+        except json.JSONDecodeError:
+            await interaction.followup.send(
+                "The downloaded song metadata file is not valid JSON.",
+                ephemeral=True,
+            )
+
+        except Exception as error:
+            await interaction.followup.send(
+                f"An error occurred while trying to play this song: {error}",
+                ephemeral=True,
+            )
+
+        finally:
+            # Re-enable the button after playback/error. If you instead want
+            # one-use-only behavior, remove these two lines.
+            button.disabled = False
+
+            try:
+                await interaction.edit_original_response(view=self)
+            except discord.HTTPException:
+                pass
+
+
+async def setup(bot: commands.Bot):
+    bot.add_view(
+        PlayDownloadedSongButtonView(
+            bot=bot,
+            file=None,
+            file_info=None,
+            url=None,
+        )
+    )

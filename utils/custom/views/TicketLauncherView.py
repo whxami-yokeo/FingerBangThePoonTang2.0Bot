@@ -1,1 +1,38 @@
-import discordfrom discord import Colorfrom discord.ext import commandsfrom utils.EmbedGeneratorUtil import EmbedGeneratorclass TicketLauncher(discord.ui.View):    def __init__(self, bot):        self.bot = bot        super().__init__(timeout=None)    # noinspection PyUnusedLocal    @discord.ui.button(label="Create a Ticket", style=discord.ButtonStyle.primary, custom_id="button-3", emoji="📝",)    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):        ticket = discord.utils.get(interaction.guild.text_channels, name=f"ticket-{interaction.user.name}-{interaction.user.discriminator}")        if ticket is not None:            embed = EmbedGenerator.generate_simple_message_embed(description=f"You already have a ticket open at: {ticket.mention}!", colour=Color.dark_orange(), timestamp=False)            await interaction.response.send_message(embed=embed, ephemeral=True)        else:            overwrites = {                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),                interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)            }            category = discord.utils.get(interaction.guild.categories, name='tickets')            channel = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}-{interaction.user.discriminator}", overwrites=overwrites, reason=f"Ticket for {interaction.user}", category=category)            embed_1 = EmbedGenerator.generate_simple_message_embed(description=f"Created a ticket successfully!", colour=Color.green(), timestamp=False)            embed_2 = EmbedGenerator(self.bot).generate_simple_message_embed_with_footer(description=f"I have opened a ticket for you in {channel.mention}!", colour=Color.green(), timestamp=True)            await channel.send(embed=embed_1)            await interaction.response.send_message(embed=embed_2, ephemeral=True)async def setup(bot: commands.Bot):    bot.add_view(TicketLauncher(bot=bot))
+import discord
+from discord import Color
+from discord.ext import commands
+
+from utils.EmbedGeneratorUtil import EmbedGenerator
+
+
+class TicketLauncher(discord.ui.View):
+    def __init__(self, bot):
+        self.bot = bot
+        super().__init__(timeout=None)
+
+    # noinspection PyUnusedLocal
+    @discord.ui.button(label="Create a Ticket", style=discord.ButtonStyle.primary, custom_id="button-3", emoji="📝",)
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        ticket = discord.utils.get(interaction.guild.text_channels, name=f"ticket-{interaction.user.name}-{interaction.user.discriminator}")
+
+        if ticket is not None:
+            embed = EmbedGenerator.generate_simple_message_embed(description=f"You already have a ticket open at: {ticket.mention}!", colour=Color.dark_orange(), timestamp=False)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
+                interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+            }
+            category = discord.utils.get(interaction.guild.categories, name='tickets')
+            channel = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}-{interaction.user.discriminator}", overwrites=overwrites, reason=f"Ticket for {interaction.user}", category=category)
+
+            embed_1 = EmbedGenerator.generate_simple_message_embed(description=f"Created a ticket successfully!", colour=Color.green(), timestamp=False)
+            embed_2 = EmbedGenerator(self.bot).generate_simple_message_embed_with_footer(description=f"I have opened a ticket for you in {channel.mention}!", colour=Color.green(), timestamp=True)
+
+            await channel.send(embed=embed_1)
+            await interaction.response.send_message(embed=embed_2, ephemeral=True)
+
+
+async def setup(bot: commands.Bot):
+    bot.add_view(TicketLauncher(bot=bot))
