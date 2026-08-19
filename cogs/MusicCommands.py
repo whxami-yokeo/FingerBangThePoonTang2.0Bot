@@ -489,6 +489,7 @@ class MusicCommands(commands.Cog):
 
         await ctx.reply(embed=embed, mention_author=False)
 
+    @commands.has_role("Bot Admin")
     @commands.command(name="pause", help="Pauses the current song.")
     async def pause(self, ctx: commands.Context) -> None:
         guild_id = ctx.guild.id
@@ -520,6 +521,7 @@ class MusicCommands(commands.Cog):
         )
         await ctx.reply(embed=embed, mention_author=False)
 
+    @commands.has_role("Bot Admin")
     @commands.command(name="resume", help="Resumes paused music.")
     async def resume(self, ctx: commands.Context) -> None:
         guild_id = ctx.guild.id
@@ -557,6 +559,7 @@ class MusicCommands(commands.Cog):
         )
         await ctx.reply(embed=embed, mention_author=False)
 
+    @commands.has_role("Bot Admin")
     @commands.command(name="skip", help="Skips the current song.")
     async def skip(self, ctx: commands.Context) -> None:
         guild_id = ctx.guild.id
@@ -588,6 +591,7 @@ class MusicCommands(commands.Cog):
         )
         await ctx.reply(embed=embed, mention_author=False)
 
+    @commands.has_role("Bot Admin")
     @commands.command(name="stop", help="Stops music and clears the queue.")
     async def stop(self, ctx: commands.Context) -> None:
         guild_id = ctx.guild.id

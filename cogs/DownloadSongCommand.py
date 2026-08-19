@@ -44,6 +44,7 @@ class DownloadSongCommand(commands.Cog):
             "dump_single_json": True,
         }
 
+    @commands.has_role("Bot Admin")
     @commands.command(
         name="dlsong",
         help="Downloads A Song From Youtube And Stores It Locally, For Later Playback.",

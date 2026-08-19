@@ -62,10 +62,17 @@ class JoinCommand(commands.Cog):
             await self.join_member_voice(ctx.author)
 
         except UserNotInChannelError:
-            raise
+            raise UserNotInChannelError(
+                error="The Bot Cannot Join Your Channel Because You Are Not In One!"
+            )
 
         except BotAlreadyInChannelError:
-            raise
+            raise BotAlreadyInChannelError(
+                error=(
+                    "I Am Already In Another Voice Channel. "
+                    "Move me to your channel before trying to play this song."
+                )
+            )
 
 
 async def setup(bot: commands.Bot):
